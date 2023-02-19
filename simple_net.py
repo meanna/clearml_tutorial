@@ -1,4 +1,4 @@
-# tex_classification.py
+# simple_net.py
 
 import torch
 import torch.nn as nn
