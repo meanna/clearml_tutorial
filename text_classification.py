@@ -9,9 +9,9 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from tqdm import tqdm
 
-from clearml import Task, Dataset
+from clearml import Task
 
-
+Task.add_requirements('requirements.txt')
 
 task = Task.init(
     project_name='ClearML Tutorial',    # project name of at least 3 characters
@@ -22,6 +22,15 @@ task = Task.init(
 )
 
 task.execute_remotely(queue_name="<=12GB", clone=False, exit_process=True)
+
+
+
+from clearml import Dataset
+ds = Dataset.get(dataset_id="fff46caa6cab478c839ab0a806244ddc")
+ds.list_files()
+ds.get_mutable_local_copy(target_folder='./data')
+
+
 
 logger = task.get_logger()
 
@@ -35,9 +44,7 @@ logger = task.get_logger()
 
 
 
-ds = Dataset.get(dataset_id="fff46caa6cab478c839ab0a806244ddc")
-ds.list_files()
-ds.get_mutable_local_copy(target_folder='./data')
+
 
 ###################
 
@@ -103,7 +110,7 @@ def train(data):
         optimizer.step()
 
     return correct / total, avg_loss
-import pandas as pd
+#import pandas as pda
 
 
 
@@ -137,8 +144,8 @@ def evaluate(data):
     data = wrong_predictions
 
     # Create the pandas DataFrame
-    df = pd.DataFrame(data, columns=['label', 'prediction', 'input text'])
-    return correct / total, df
+    #df = pda.DataFrame(data, columns=['label', 'prediction', 'input text'])
+    return correct / total, data
 
 
 class Net(nn.Module):

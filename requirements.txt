@@ -1,4 +1,4 @@
-torch
-torchtext
-tqdm
-#pandas
+torch==1.13.1+cu116
+torchtext==0.14.1
+tqdm==4.64.1
+pandas==1.5.3
