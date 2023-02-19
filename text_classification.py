@@ -25,12 +25,12 @@ task.execute_remotely(queue_name="<=12GB", clone=False, exit_process=True)
 
 logger = task.get_logger()
 
-task.set_script(
-    repository='',
-    branch='',
-    working_dir='',
-    entry_point=''
-)
+# task.set_script(
+#     repository='',
+#     branch='',
+#     working_dir='',
+#     entry_point=''
+# )
 
 
 
