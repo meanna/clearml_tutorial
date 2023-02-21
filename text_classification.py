@@ -1,5 +1,5 @@
-
-#clearml-task --project "ClearML Tutorial" --name sentiment --script text_classification.py --queue "<=12GB" --packages torch --args batch-size=22
+# clearml-task --project "ClearML Tutorial" --name sentiment --script text_classification.py --queue "<=12GB"
+# --packages torch --args batch-size=22
 
 import torch
 import torch.nn as nn
@@ -14,8 +14,8 @@ from clearml import Task
 Task.add_requirements('requirements.txt')
 
 task = Task.init(
-    project_name='ClearML Tutorial',    # project name of at least 3 characters
-    task_name='sentiment', # task name of at least 3 characters
+    project_name='ClearML Tutorial',  # project name of at least 3 characters
+    task_name='sentiment',  # task name of at least 3 characters
     task_type=None,
     tags="12GPU",
     auto_connect_arg_parser=True,
@@ -23,14 +23,11 @@ task = Task.init(
 
 task.execute_remotely(queue_name="<=12GB", clone=False, exit_process=True)
 
-
-
 from clearml import Dataset
+
 ds = Dataset.get(dataset_id="fff46caa6cab478c839ab0a806244ddc")
 ds.list_files()
 ds.get_mutable_local_copy(target_folder='./data')
-
-
 
 logger = task.get_logger()
 
@@ -42,17 +39,15 @@ logger = task.get_logger()
 # )
 
 
-
-
-
-
 ###################
 
 from utils import CON
+
 print(CON)
 
 ##########################
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
 
 def read_data(path):
     data = []
@@ -77,7 +72,6 @@ def collate(batch):
 
     inputs = pad_sequence(inputs, batch_first=True, padding_value=1)
     return inputs, torch.tensor(labels), torch.tensor(text_length)
-
 
 
 def train(data):
@@ -110,8 +104,9 @@ def train(data):
         optimizer.step()
 
     return correct / total, avg_loss
-#import pandas as pda
 
+
+# import pandas as pda
 
 
 def evaluate(data):
@@ -129,7 +124,6 @@ def evaluate(data):
             best_class = torch.argmax(output_prob, dim=2)
             predicted = best_class.squeeze().tolist()
 
-
             for i in range(len(predicted)):
                 input_text_ids = inputs[i]
                 input_len = input_length[i]
@@ -144,7 +138,7 @@ def evaluate(data):
     data = wrong_predictions
 
     # Create the pandas DataFrame
-    #df = pda.DataFrame(data, columns=['label', 'prediction', 'input text'])
+    # df = pda.DataFrame(data, columns=['label', 'prediction', 'input text'])
     return correct / total, data
 
 
@@ -174,7 +168,9 @@ class Net(nn.Module):
         out = self.linear(max_pool)
         return out
 
+
 import argparse
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -200,7 +196,7 @@ if __name__ == "__main__":
     # Training parameters
     epochs = args.epochs
     lr = args.lr
-    clip = args.gd_clip # gradient clipping
+    clip = args.gd_clip  # gradient clipping
 
     # Read train set and compute vocab
     train_data = read_data("data/sentiment.train.tsv")
@@ -236,11 +232,10 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
 
     best_dev_acc = None
-    for i in tqdm(range(1, epochs+1)):
+    for i in tqdm(range(1, epochs + 1)):
         print("\nEpoch = ", i)
         train_acc, train_loss = train(train_loader)
         print("Train accuracy = ", train_acc)
-
 
         dev_acc, _ = evaluate(dev_loader)
         print("Dev accuracy   = ", dev_acc)
@@ -254,7 +249,6 @@ if __name__ == "__main__":
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
             torch.save(model.state_dict(), "model.pt")
-
 
     test_acc, wrong_preds = evaluate(test_loader)
     logger.report_table(title='Wrong Predictions', series='pandas DataFrame', iteration=0, table_plot=wrong_preds)

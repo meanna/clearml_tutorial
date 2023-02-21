@@ -1,1 +1,1 @@
-CON = 12
+TEST_VALUE = 12
