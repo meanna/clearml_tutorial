@@ -1,6 +1,5 @@
-# clearml-task --project "ClearML Tutorial" --name sentiment --script text_classification.py --queue "<=12GB"
-# --packages torch --args batch-size=22
-
+# python text_classification.py --epochs 20 --lr 0.005
+import argparse
 import torch
 import torch.nn as nn
 from torchtext.vocab import build_vocab_from_iterator
@@ -9,43 +8,31 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from tqdm import tqdm
 
-from clearml import Task
+from clearml import Task, TaskTypes
+from clearml import Dataset
+
+# ######################## ClearML #########################
 
 Task.add_requirements('requirements.txt')
 
 task = Task.init(
-    project_name='ClearML Tutorial',  # project name of at least 3 characters
-    task_name='sentiment',  # task name of at least 3 characters
-    task_type=None,
-    tags="12GPU",
+    project_name='Text Classification',
+    task_name='sentiment analysis',
+    task_type=TaskTypes.training,
+    tags="my model",
     auto_connect_arg_parser=True,
 )
 
 task.execute_remotely(queue_name="<=12GB", clone=False, exit_process=True)
 
-from clearml import Dataset
-
-ds = Dataset.get(dataset_id="fff46caa6cab478c839ab0a806244ddc")
+ds = Dataset.get(dataset_id="a74d6f9397674d11949dc97d36e377fb")
 ds.list_files()
 ds.get_mutable_local_copy(target_folder='./data')
 
 logger = task.get_logger()
 
-# task.set_script(
-#     repository='',
-#     branch='',
-#     working_dir='',
-#     entry_point=''
-# )
+# ######################### MODEL #########################
 
-
-###################
-
-from utils import CON
-
-print(CON)
-
-##########################
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
@@ -106,14 +93,11 @@ def train(data):
     return correct / total, avg_loss
 
 
-# import pandas as pda
-
-
 def evaluate(data):
     model.eval()
     correct = 0
     total = 0
-    wrong_predictions = []
+    wrong_predictions = [("label", "prediction", "input text")]
     with torch.no_grad():
         for inputs, labels, input_length in data:
             inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
@@ -135,11 +119,7 @@ def evaluate(data):
                     wrong_predictions.append((labels[i].item(), predicted[i], " ".join(input_text)))
                 total += 1
 
-    data = wrong_predictions
-
-    # Create the pandas DataFrame
-    # df = pda.DataFrame(data, columns=['label', 'prediction', 'input text'])
-    return correct / total, data
+    return correct / total, wrong_predictions
 
 
 class Net(nn.Module):
@@ -161,15 +141,9 @@ class Net(nn.Module):
 
         max_pool = lstm_out.max(dim=1)[0].unsqueeze(1)  # batch, 1, hidden*2
 
-        # test max + mean pool (not better than only max pool)
-        # mean_pool = lstm_out.mean(dim=1).unsqueeze(1) # batch, 1, hidden*2
-        # max_mean_pool = torch.cat( [max_pool, mean_pool], dim=2) # batch, 1, hidden*2 *2]
-
         out = self.linear(max_pool)
         return out
 
-
-import argparse
 
 if __name__ == "__main__":
 
@@ -203,6 +177,7 @@ if __name__ == "__main__":
     train_texts = []
     label_set = set()
     for label, tokens in train_data:
+        tokens = [token.lower() for token in tokens]
         train_texts.append(tokens)
         label_set.add(label)
 
@@ -231,7 +206,6 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss(ignore_index=1)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
 
-    best_dev_acc = None
     for i in tqdm(range(1, epochs + 1)):
         print("\nEpoch = ", i)
         train_acc, train_loss = train(train_loader)
@@ -244,14 +218,10 @@ if __name__ == "__main__":
 
         logger.report_scalar(title='dev acc', series='Accuracy', value=dev_acc, iteration=i)
 
-        if not best_dev_acc:
-            best_dev_acc = dev_acc
-        if dev_acc > best_dev_acc:
-            best_dev_acc = dev_acc
-            torch.save(model.state_dict(), "model.pt")
+        torch.save(model.state_dict(), "model.pt")
 
     test_acc, wrong_preds = evaluate(test_loader)
-    logger.report_table(title='Wrong Predictions', series='pandas DataFrame', iteration=0, table_plot=wrong_preds)
+    logger.report_table(title='Wrong Predictions', series='pandas DataFrame', table_plot=wrong_preds)
 
     logger.report_single_value('test acc', test_acc)
     print("Test accuracy = ", test_acc)
